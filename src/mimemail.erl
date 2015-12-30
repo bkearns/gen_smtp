@@ -139,7 +139,9 @@ decode_header(Value, Charset) ->
 						  error ->
 							  % re-throw original error
 							  % may also use erlang:raise/3 to preserve original traceback
-							  erlang:Type(Reason)
+							  % erlang:Type(Reason)
+   						          erlang:raise(error, Reason, erlang:get_stacktrace())
+								  
 					  end
 			  end,
 	iolist_to_binary(Decoded).
@@ -1228,7 +1230,7 @@ various_parsing_test_() ->
 		},
 		{"Headers with non-ASCII characters",
 			fun() ->
-					?assertEqual({[{<<"foo">>, <<"bar ? baz">>}], <<>>}, parse_headers(<<"foo: bar ø baz\r\n">>)),
+					?assertEqual({[{<<"foo">>, <<"bar ?? baz">>}], <<>>}, parse_headers(<<"foo: bar ø baz\r\n"/utf8>>)),
 					?assertEqual({[], <<"bär: bar baz\r\n">>}, parse_headers(<<"bär: bar baz\r\n">>))
 			end
 		},
@@ -1692,8 +1694,8 @@ encode_quoted_printable_test_() ->
 		},
 		{"input with invisible non-ascii characters",
 			fun() ->
-					?assertEqual(<<"There's some stuff=A0in=A0here\r\n">>,
-						encode_quoted_printable(<<"There's some stuff in here\r\n">>, "", 0))
+					?assertEqual(<<"There's some stuff=C2=A0in=C2=A0here\r\n">>,
+						encode_quoted_printable(<<"There's some stuff in here\r\n"/utf8>>, "", 0))
 			end
 		},
 		{"add soft newlines",
@@ -1744,9 +1746,9 @@ rfc2047_decode_test_() ->
 		{"Simple tests",
 			fun() ->
 					?assertEqual(<<"Keith Moore <moore@cs.utk.edu>">>, decode_header(<<"=?US-ASCII?Q?Keith_Moore?= <moore@cs.utk.edu>">>, "utf-8")),
-					?assertEqual(<<"Keld Jørn Simonsen <keld@dkuug.dk>"/utf8>>, decode_header(<<"=?ISO-8859-1?Q?Keld_J=F8rn_Simonsen?= <keld@dkuug.dk>">>, "utf-8")),
-					?assertEqual(<<"Olle Järnefors <ojarnef@admin.kth.se>"/utf8>>, decode_header(<<"=?ISO-8859-1?Q?Olle_J=E4rnefors?= <ojarnef@admin.kth.se>">>, "utf-8")),
-					?assertEqual(<<"André Pirard <PIRARD@vm1.ulg.ac.be>"/utf8>>, decode_header(<<"=?ISO-8859-1?Q?Andr=E9?= Pirard <PIRARD@vm1.ulg.ac.be>">>, "utf-8"))
+					?assertEqual(<<"Keld Jørn Simonsen <keld@dkuug.dk>"/utf8>>, decode_header(<<"=?ISO-8859-1?Q?Keld_J=F8rn_Simonsen?= <keld@dkuug.dk>"/utf8>>, "utf-8")),
+					?assertEqual(<<"Olle Järnefors <ojarnef@admin.kth.se>"/utf8>>, decode_header(<<"=?ISO-8859-1?Q?Olle_J=E4rnefors?= <ojarnef@admin.kth.se>"/utf8>>, "utf-8")),
+					?assertEqual(<<"André Pirard <PIRARD@vm1.ulg.ac.be>"/utf8>>, decode_header(<<"=?ISO-8859-1?Q?Andr=E9?= Pirard <PIRARD@vm1.ulg.ac.be>"/utf8>>, "utf-8"))
 			end
 		},
 		{"encoded words seperated by whitespace should have whitespace removed",
@@ -1772,14 +1774,14 @@ rfc2047_decode_test_() ->
 		},
 		{"invalid character sequence handling",
 			fun() ->
-					?assertError({badmatch, {error, eilseq}}, decode_header(<<"=?us-ascii?B?dGhpcyBjb250YWlucyBhIGNvcHlyaWdodCCpIHN5bWJvbA==?=">>, "utf-8")),
-					?assertEqual(<<"this contains a copyright  symbol">>, decode_header(<<"=?us-ascii?B?dGhpcyBjb250YWlucyBhIGNvcHlyaWdodCCpIHN5bWJvbA==?=">>, "utf-8//IGNORE")),
-					?assertEqual(<<"this contains a copyright © symbol"/utf8>>, decode_header(<<"=?iso-8859-1?B?dGhpcyBjb250YWlucyBhIGNvcHlyaWdodCCpIHN5bWJvbA==?=">>, "utf-8//IGNORE"))
+					?assertError({badmatch, {error, eilseq}}, decode_header(<<"=?us-ascii?B?dGhpcyBjb250YWlucyBhIGNvcHlyaWdodCCpIHN5bWJvbA==?="/utf8>>, "utf-8")),
+					?assertEqual(<<"this contains a copyright  symbol">>, decode_header(<<"=?us-ascii?B?dGhpcyBjb250YWlucyBhIGNvcHlyaWdodCCpIHN5bWJvbA==?="/utf8>>, "utf-8//IGNORE")),
+					?assertEqual(<<"this contains a copyright © symbol"/utf8>>, decode_header(<<"=?iso-8859-1?B?dGhpcyBjb250YWlucyBhIGNvcHlyaWdodCCpIHN5bWJvbA==?="/utf8>>, "utf-8//IGNORE"))
 			end
 		},
 		{"multiple unicode email addresses",
 			fun() ->
-					?assertEqual(<<"Jacek Złydach <jacek.zlydach@erlang-solutions.com>, chak de planet óóóó <jz@erlang-solutions.com>, Jacek Złydach <jacek.zlydach@erlang-solutions.com>, chak de planet óóóó <jz@erlang-solutions.com>"/utf8>>, decode_header(<<"=?UTF-8?B?SmFjZWsgWsWCeWRhY2g=?= <jacek.zlydach@erlang-solutions.com>, =?UTF-8?B?Y2hhayBkZSBwbGFuZXQgw7PDs8Ozw7M=?= <jz@erlang-solutions.com>, =?UTF-8?B?SmFjZWsgWsWCeWRhY2g=?= <jacek.zlydach@erlang-solutions.com>, =?UTF-8?B?Y2hhayBkZSBwbGFuZXQgw7PDs8Ozw7M=?= <jz@erlang-solutions.com>">>, "utf-8"))
+					?assertEqual(<<"Jacek Złydach <jacek.zlydach@erlang-solutions.com>, chak de planet óóóó <jz@erlang-solutions.com>, Jacek Złydach <jacek.zlydach@erlang-solutions.com>, chak de planet óóóó <jz@erlang-solutions.com>"/utf8>>, decode_header(<<"=?UTF-8?B?SmFjZWsgWsWCeWRhY2g=?= <jacek.zlydach@erlang-solutions.com>, =?UTF-8?B?Y2hhayBkZSBwbGFuZXQgw7PDs8Ozw7M=?= <jz@erlang-solutions.com>, =?UTF-8?B?SmFjZWsgWsWCeWRhY2g=?= <jacek.zlydach@erlang-solutions.com>, =?UTF-8?B?Y2hhayBkZSBwbGFuZXQgw7PDs8Ozw7M=?= <jz@erlang-solutions.com>"/utf8>>, "utf-8"))
 			end
 		},
 		{"decode something I encoded myself",
