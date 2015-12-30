@@ -1,4 +1,14 @@
 language: erlang
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-4.8
+      - g++-4.8
+      - build-essential
+
 notifications:
   email: you@example.org
 otp_release:
