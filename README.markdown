@@ -1,3 +1,4 @@
+Build Status:  [![Build Status](https://travis-ci.org/bkearns/gen_smtp.svg?branch=master)](https://travis-ci.org/bkearns/gen_smtp)
 Mission
 =======
 
